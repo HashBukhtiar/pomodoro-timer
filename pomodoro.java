@@ -2,6 +2,7 @@ package Pomodoro;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -17,6 +18,7 @@ public class pomodoro {
     static float breakTime = 5;
     static pomodoroGUI gui;
     static AtomicBoolean stop = new AtomicBoolean(false);
+    static AtomicBoolean pause = new AtomicBoolean(false);
     
     public static void displayMenu() {
         System.out.println("1 - Start");
@@ -61,24 +63,31 @@ public class pomodoro {
         return String.format("%02d:%02d", minutes, seconds);
     }
 
-    public static void startTimer(float workTime, float breakTime) {
+    public static void runTimer(float workTime, float breakTime) {
         stop.set(false);
+        pause.set(false);
         ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
     
-        executor.scheduleAtFixedRate(new Runnable() {
+        Future<?> future = executor.scheduleAtFixedRate(new Runnable() {
             float remainingWorkTime = workTime * 60;
             float remainingBreakTime = breakTime * 60;
     
             @Override
             public void run() {
                 try {
+                    while (pause.get()) {
+                        Thread.sleep(1000);
+                        if (stop.get()) {
+                            return;
+                        }
+                    }
+
                     if (stop.get()) {
-                        executor.shutdown();
                         return;
                     }
-    
+
                     boolean isWorkTime = remainingWorkTime > 0;
-    
+
                     if (isWorkTime) {
                         if (remainingWorkTime == workTime * 60) {
                             System.out.println("\n\n---------- Work Time Started ----------");
@@ -97,14 +106,33 @@ public class pomodoro {
                         remainingWorkTime = workTime * 60;
                         remainingBreakTime = breakTime * 60;   
                     }
+
+                    // Add this loop to continuously check the pause flag
+                    while (pause.get()) {
+                        Thread.sleep(1000);
+                        if (stop.get()) {
+                            return;
+                        }
+                    }
                 } catch (Exception e) {
                     System.out.println("An error occurred: " + e.getMessage());
-                    executor.shutdown();
                 }
             }
         }, 0, 1, TimeUnit.SECONDS);
-    }
     
+        new Thread(() -> {
+            while (!stop.get()) {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+            future.cancel(true);
+            executor.shutdownNow();
+        }).start();
+    }
+
     public static void main(String[] args) {
         gui = new pomodoroGUI();
         while (true) {
@@ -112,7 +140,7 @@ public class pomodoro {
             int choice = getChoice();
             switch (choice) {
                 case 1: // Start Timer
-                    startTimer(workTime, breakTime);
+                    runTimer(workTime, breakTime);
                     break;
                 case 2: // Settings
                     chooseTimes();

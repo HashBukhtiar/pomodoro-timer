@@ -11,6 +11,7 @@ public class pomodoroGUI {
     private JLabel breakTimeLabel;
     private JButton startButton;
     private JButton stopButton;
+    private JButton pauseButton; 
 
     public void updateWorkTimeLabel(String text) {
         workTimeLabel.setText(text);
@@ -39,12 +40,20 @@ public class pomodoroGUI {
         stopButton = new JButton("Stop");
         stopButton.setFont(new Font("Arial", Font.PLAIN, 18)); 
 
+        pauseButton = new JButton("Pause"); 
+        pauseButton.setFont(new Font("Arial", Font.PLAIN, 18));
+
         startButton.addActionListener(e -> {
-            pomodoro.startTimer(pomodoro.workTime, pomodoro.breakTime);
+            pomodoro.runTimer(pomodoro.workTime, pomodoro.breakTime);
         });
 
         stopButton.addActionListener(e -> {
             pomodoro.stop.set(true);
+        });
+
+        pauseButton.addActionListener(e -> {
+            pomodoro.pause.set(!pomodoro.pause.get());
+            pauseButton.setText(pomodoro.pause.get() ? "Resume" : "Pause");
         });
 
         JPanel panel = new JPanel();
@@ -53,6 +62,7 @@ public class pomodoroGUI {
         panel.add(workTimeLabel);
         panel.add(breakTimeLabel);
         panel.add(startButton);
+        panel.add(pauseButton);
         panel.add(stopButton);
 
         frame.add(panel, BorderLayout.CENTER);
